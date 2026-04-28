@@ -1,0 +1,174 @@
+import { TipoMetrica } from '@prisma/client'
+import Bottleneck from 'bottleneck';
+export * from './avaliacao/index'
+
+export const avaliacao = {
+  [TipoMetrica.CompreensaoTextual]: compreensaoTextual,
+  [TipoMetrica.ClarezaResposta]: clarezaResposta,
+  [TipoMetrica.TesteDoEmbed]: testeDoEmbed,
+  [TipoMetrica.DireitoAdministrativo]: direitoAdministrativo,
+  [TipoMetrica.Matematica]: testeMatematica,
+  [TipoMetrica.RaciocinioLogico]: testeRaciocinioLogico,
+  [TipoMetrica.VibeCoding]: testeVibeCoding,
+} as const
+
+export async function processarAvaliacaoLlm(metrica: TipoMetrica, modelo: ModelProvider, ctx: any) {
+  return await avaliacao[metrica](modelo, ctx)
+}
+
+export async function processarQuestao(id: number, modeloId: number) {
+  const prisma = usePrisma()
+
+  const { data: questao, error: questaoError } = await asyncEnvelope(async () => await prisma.bancoDeQuestoes.findUnique({
+    where: {
+      id,
+    },
+    include: {
+      metrica: true
+    }
+  }))
+
+  const { data: modelo, error: modeloError } = await asyncEnvelope(async () => await prisma.modelos.findUnique({
+    where: {
+      id: modeloId,
+    },
+    include: {
+      provedor: true
+    }
+  }))
+
+  if (!questao || !modelo) {
+    return null
+  }
+
+  const { data: result, error: aiError } = await asyncEnvelope(async () => await processarAvaliacaoLlm(
+    questao.metrica.tipo, 
+    { model: modelo.nome, provider: modelo.provedor.nome }, 
+    questao.pergunta
+  ))
+
+  const modelMetadata: ModelMetadata | null = (result as WithModelMetadata<object> | null)?.modelMetadata ?? null
+
+  if (aiError) {
+    return await prisma.resultados.create({
+      data: {
+        tipoResultado: questao.metrica.tipo,
+        jsonResultado: {},
+        erro: true,
+        jsonErro: {
+          stack: aiError.stack,
+          message: aiError.message,
+          name: aiError.name,
+        },
+        bancoDeQuestoesId: questao.id,
+        modeloId: modelo.id,
+        inputTokens: 0,
+        outputTokens:0,
+        totalTokens: 0
+      },
+    })
+  }
+
+  return await prisma.resultados.create({
+    data: {
+      tipoResultado: questao.metrica.tipo,
+      jsonResultado: result,
+      bancoDeQuestoesId: questao.id,
+      modeloId: modelo.id,
+      inputTokens: modelMetadata?.usage
+      ? modelMetadata.usage.inputTokens
+      : 0,
+       outputTokens: modelMetadata?.usage
+      ? modelMetadata.usage.outputTokens
+      : 0,
+      totalTokens: modelMetadata?.usage
+      ? modelMetadata.usage.totalTokens
+      : 0
+    },
+  })
+}
+
+export async function mapearQuestoesNaoProcessadas(ids?: number[]){
+  const prisma = usePrisma()
+
+  const modelos = await prisma.modelos.findMany({
+    select: {
+      id: true,
+      nome: true,
+      provedorId: true,
+      resultados: {
+        select: {
+          id: true,
+          tipoResultado: true,
+          bancoDeQuestoesId: true,
+        },
+      }
+    },
+  })
+
+  const questoes = await prisma.bancoDeQuestoes.findMany({
+    select: {
+      id: true
+    }
+  })
+
+  return modelos.filter((modelo) => ids ? ids.includes(modelo.id) : true)
+    .map((modelo) => {
+      const processed = modelo.resultados.map((resultado) => resultado.bancoDeQuestoesId)
+      return {
+        nome: modelo.nome,
+        idModelo: modelo.id,
+        idProvedor: modelo.provedorId,
+        pendente: questoes.map((questao) => questao.id).filter((id) => !processed.includes(id))
+      }
+    })
+}
+
+const limiter = new Bottleneck({
+  maxConcurrent: 3 
+});
+
+export async function processarModelo(ids?: number[]) {
+  const prisma = usePrisma();
+  const { data: mapeado, error: mapError } = await asyncEnvelope(async () => await mapearQuestoesNaoProcessadas(ids));
+
+  if (mapError) {
+    return new Error('Ocorreu um erro ao mapear items não processados');
+  }
+
+  const promisesModelos = mapeado.map(async (item) => {
+    const modelTasksPromises = item.pendente.map((id) => 
+      limiter.schedule(async () => {
+        const { data: resultado, error: questionError } = await asyncEnvelope(async () => processarQuestao(id, item.idModelo));
+        if (questionError) console.log(questionError);
+        
+        if (!resultado) throw new Error('falha ao processar questão ' + id);
+        const { data: resultadoProcessado, error: resultError } = await asyncEnvelope(async () => processarResultado(resultado.id));
+        if (!resultadoProcessado) throw new Error('falha ao processar resultado ' + resultado.id);
+
+        if (resultError) console.log(resultError);
+
+        const { data: indicador, error: indicadorError } = await asyncEnvelope(async () => await prisma.indicadores.create({
+          data: resultadoProcessado
+        }));
+
+        if (indicadorError) console.log(indicadorError);
+
+        if (!indicador) throw new Error('falha ao armazenar resultado processado ' + resultado.id);
+
+        return { resultado, indicador };
+      })
+    );
+    
+    const modelTasks = await Promise.all(modelTasksPromises);
+
+    return {
+      modelo: item.idModelo,
+      processado: modelTasks
+    };
+  });
+
+  return await Promise.all(promisesModelos);
+}
+
+
