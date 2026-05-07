@@ -1,10 +1,5 @@
-export default defineEventHandler(async (event) => {
-  const prisma = usePrisma()
+import { listProvedoresController } from '../controller/provedores.controller'
 
-  return await prisma.provedores.findMany({
-    select: {
-      nome: true,
-      id: true,
-    }
-  })
+export default defineEventHandler(async () => {
+  return await listProvedoresController()
 })

@@ -1,75 +1,50 @@
-# Nuxt Minimal Starter
+# Benchmarking de Modelos LLM
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+Aplicação Nuxt + Bun + Prisma para executar benchmarks de modelos e exibir resultados por métrica.
+
+## Estrutura do projeto
+
+Com base no padrão do repositório `fastapi-template`, o backend foi organizado em camadas:
+
+```bash
+server/
+├── api/             # Rotas HTTP (entrypoint)
+├── controller/      # Regras de orquestração por endpoint
+├── repository/      # Acesso a banco (Prisma)
+├── dependencies/    # Dependências compartilhadas (ex.: cliente Prisma)
+├── models/          # Schemas/contratos de entrada
+└── utils/           # Regras auxiliares e motor de avaliação
+```
+
+Frontend e recursos:
+
+```bash
+app/                 # Páginas e componentes Vue/Nuxt
+prisma/              # Schema, migrations e seed
+shared/              # Utilitários compartilhados
+```
 
 ## Setup
 
-Make sure to install dependencies:
-
 ```bash
-# npm
-npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
 bun install
 ```
 
-## Development Server
-
-Start the development server on `http://localhost:3000`:
+## Desenvolvimento
 
 ```bash
-# npm
-npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
 bun run dev
 ```
 
-## Production
-
-Build the application for production:
+## Banco de dados e seed
 
 ```bash
-# npm
-npm run build
+docker compose up -d
+bun run seed
+```
 
-# pnpm
-pnpm build
+## Build
 
-# yarn
-yarn build
-
-# bun
+```bash
 bun run build
 ```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
