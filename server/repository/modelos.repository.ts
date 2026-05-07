@@ -30,7 +30,11 @@ export function recreateModelo(prisma: PrismaClient, modelo: { nome: string, pro
   return prisma.modelos.create({
     data: {
       nome: modelo.nome,
-      provedorId: modelo.provedorId,
+      provedor: {
+        connect: {
+          id: modelo.provedorId,
+        },
+      },
     },
   })
 }

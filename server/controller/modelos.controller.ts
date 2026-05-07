@@ -18,7 +18,7 @@ export async function createModeloController(body: CreateModeloInput) {
 
   processarModelo([modelo.id])
 
-  return modelo
+  return newModelo
 }
 
 export async function updateModeloController(body: IdModeloInput) {
