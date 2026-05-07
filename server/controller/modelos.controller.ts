@@ -18,7 +18,7 @@ export async function createModeloController(body: CreateModeloInput) {
 
   processarModelo([modelo.id])
 
-  return newModelo
+  return modelo
 }
 
 export async function updateModeloController(body: IdModeloInput) {
@@ -48,7 +48,7 @@ export async function updateModeloController(body: IdModeloInput) {
 
   processarModelo([newModelo.id])
 
-  return modelo
+  return newModelo
 }
 
 export async function deleteModeloController(body: IdModeloInput) {
