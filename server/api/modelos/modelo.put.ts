@@ -1,6 +1,6 @@
-import { updateModeloController } from '../../controller/modelos.controller'
+import { refreshModeloController } from '../../controller/modelos.controller'
 
 export default defineEventHandler(async (event) => {
     const body = await readBody<{ id: number }>(event)
-    return await updateModeloController(body)
+    return await refreshModeloController(body)
 })

@@ -10,7 +10,7 @@ export async function createModeloController(body: CreateModeloInput) {
   const parsedBody = createModeloSchema.parse(body)
   const prisma = getPrisma()
 
-  const { data: modelo } = await asyncEnvelope(async () => await createModelo(prisma, {
+  const { data: modelo } = await asyncEnvelope(() => createModelo(prisma, {
     modelo: parsedBody.modelo,
     provedorId: parsedBody.provedor,
   }))
@@ -24,11 +24,11 @@ export async function createModeloController(body: CreateModeloInput) {
   return modelo
 }
 
-export async function updateModeloController(body: IdModeloInput) {
+export async function refreshModeloController(body: IdModeloInput) {
   const parsedBody = idModeloSchema.parse(body)
   const prisma = getPrisma()
 
-  const { data: modelo } = await asyncEnvelope(async () => await deleteModeloById(prisma, parsedBody.id))
+  const { data: modelo } = await asyncEnvelope(() => deleteModeloById(prisma, parsedBody.id))
 
   if (!modelo) {
     throw createError({
@@ -37,7 +37,7 @@ export async function updateModeloController(body: IdModeloInput) {
     })
   }
 
-  const { data: newModelo } = await asyncEnvelope(async () => await recreateModelo(prisma, {
+  const { data: newModelo } = await asyncEnvelope(() => recreateModelo(prisma, {
     nome: modelo.nome,
     provedorId: modelo.provedorId,
   }))
@@ -58,7 +58,7 @@ export async function deleteModeloController(body: IdModeloInput) {
   const parsedBody = idModeloSchema.parse(body)
   const prisma = getPrisma()
 
-  const { data: modelo } = await asyncEnvelope(async () => await deleteModeloById(prisma, parsedBody.id))
+  const { data: modelo } = await asyncEnvelope(() => deleteModeloById(prisma, parsedBody.id))
 
   if (!modelo) {
     return null
