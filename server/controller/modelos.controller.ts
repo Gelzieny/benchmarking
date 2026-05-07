@@ -10,7 +10,10 @@ export async function createModeloController(body: CreateModeloInput) {
   const parsedBody = createModeloSchema.parse(body)
   const prisma = getPrisma()
 
-  const { data: modelo } = await asyncEnvelope(async () => await createModelo(prisma, parsedBody))
+  const { data: modelo } = await asyncEnvelope(async () => await createModelo(prisma, {
+    modelo: parsedBody.modelo,
+    provedorId: parsedBody.provedor,
+  }))
 
   if (!modelo) {
     return null

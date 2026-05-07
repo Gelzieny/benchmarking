@@ -2,7 +2,7 @@ import type { PrismaClient } from '@prisma/client'
 
 type CreateModeloRepositoryInput = {
   modelo: string
-  provedor: number
+  provedorId: number
 }
 
 export function createModelo(prisma: PrismaClient, input: CreateModeloRepositoryInput) {
@@ -11,7 +11,7 @@ export function createModelo(prisma: PrismaClient, input: CreateModeloRepository
       nome: input.modelo,
       provedor: {
         connect: {
-          id: input.provedor,
+          id: input.provedorId,
         },
       },
     },
